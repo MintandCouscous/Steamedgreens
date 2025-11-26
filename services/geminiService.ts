@@ -58,44 +58,31 @@ Your task is to generate a **comprehensive "Deep-Dive Due Diligence Report"** on
 `;
 
 export const generateReport = async (companyName: string, focusArea?: string): Promise<ReportData> => {
-  // Lazy initialization to prevent crash on app load
-  const apiKey = process.env.API_KEY;
+  // 1. Get Key
+  const apiKey = process.env.API_KEY ? process.env.API_KEY.trim() : "";
   if (!apiKey) {
-    throw new Error("API Key is missing. Please configure the API_KEY environment variable in Vercel.");
+    throw new Error("API Key is missing. Please check vite.config.ts.");
   }
   
   const ai = new GoogleGenAI({ apiKey: apiKey });
 
-  try {
-    let prompt = `Give me a detailed brief on "${companyName}". Structure it strictly according to the sections defined in your system instructions. Use MCA filings, credit rating reports, IBBI/NCLT orders, and IPA disclosures.`;
-    
-    if (focusArea && focusArea.trim()) {
-      prompt += `\n\n**ENHANCEMENT INSTRUCTION:** Please provide extra detail and focus specifically on: "${focusArea}". Enhance this section with deep analysis.`;
-    }
+  // 2. Build Prompt
+  let prompt = `Give me a detailed brief on "${companyName}". Structure it strictly according to the sections defined in your system instructions. Use MCA filings, credit rating reports, IBBI/NCLT orders, and IPA disclosures.`;
+  if (focusArea && focusArea.trim()) {
+    prompt += `\n\n**ENHANCEMENT INSTRUCTION:** Please provide extra detail and focus specifically on: "${focusArea}". Enhance this section with deep analysis.`;
+  }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ googleSearch: {} }],
-        temperature: 0.3, // Low temperature for high factual accuracy
-      },
-    });
-
-    const fullText = response.text || "";
-    
-    // Extract Sources from grounding metadata
+  // 3. Define Helper for Response Processing
+  const processResponse = (fullText: string, groundings: any[]) => {
     const sources: string[] = [];
-    if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-      response.candidates[0].groundingMetadata.groundingChunks.forEach((chunk: any) => {
+    if (groundings) {
+      groundings.forEach((chunk: any) => {
         if (chunk.web?.uri) {
           sources.push(chunk.web.uri);
         }
       });
     }
 
-    // Extract JSON block for financials
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/);
     let financialData: FinancialYearData[] = [];
     let cleanMarkdown = fullText;
@@ -103,7 +90,6 @@ export const generateReport = async (companyName: string, focusArea?: string): P
     if (jsonMatch && jsonMatch[1]) {
       try {
         financialData = JSON.parse(jsonMatch[1]);
-        // Remove the JSON block from the display markdown to keep it clean
         cleanMarkdown = fullText.replace(jsonMatch[0], "").trim();
       } catch (e) {
         console.warn("Failed to parse financial JSON from LLM response", e);
@@ -114,11 +100,52 @@ export const generateReport = async (companyName: string, focusArea?: string): P
       companyName,
       rawMarkdown: cleanMarkdown,
       financialData,
-      sources: Array.from(new Set(sources)), // Deduplicate sources
+      sources: Array.from(new Set(sources)),
     };
+  };
 
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    throw new Error("Failed to generate report. Please check the API key and try again.");
+  try {
+    // ATTEMPT 1: With Google Search Tools
+    console.log("Attempting generation with Google Search...");
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        tools: [{ googleSearch: {} }],
+        temperature: 0.3,
+      },
+    });
+
+    return processResponse(
+        response.text || "", 
+        response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+    );
+
+  } catch (error: any) {
+    console.warn("Attempt 1 failed with Search Tool. Retrying without search...", error);
+    
+    // ATTEMPT 2: Fallback without Search Tools (Standard Model)
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt + "\n\n(Note: Real-time search is currently unavailable. Please rely on your internal knowledge base.)",
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          // Removed tools specifically to bypass permission errors
+          temperature: 0.3,
+        },
+      });
+      
+      const result = processResponse(response.text || "", []);
+      // Append a small note to the markdown so user knows
+      result.rawMarkdown += "\n\n> *Note: This report was generated using the model's internal knowledge base as live search was unavailable.*";
+      return result;
+
+    } catch (retryError: any) {
+      console.error("Gemini API Fatal Error:", retryError);
+      const msg = retryError instanceof Error ? retryError.message : String(retryError);
+      throw new Error(`Generation Failed: ${msg}`);
+    }
   }
 };
