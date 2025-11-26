@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This is critical: it replaces process.env.API_KEY in your code with the actual value from Vercel
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // Replaces process.env.API_KEY with the actual value or your hardcoded key
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || 'AIzaSyDox5A9c3_rg-BD8zCgdC186-EcOaOvzfM'),
     },
   };
 });
