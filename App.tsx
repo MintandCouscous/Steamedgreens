@@ -4,10 +4,11 @@ import { downloadWordDocument } from './utils/docGenerator';
 import { ReportRenderer } from './components/ReportRenderer';
 import { FinancialChart } from './components/FinancialChart';
 import { ReportData, ReportStatus } from './types';
-import { Search, FileDown, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { Search, FileDown, Loader2, Sparkles, AlertCircle, Settings2 } from 'lucide-react';
 
 const App = () => {
   const [companyName, setCompanyName] = useState('');
+  const [focusArea, setFocusArea] = useState('');
   const [status, setStatus] = useState<ReportStatus>(ReportStatus.IDLE);
   const [report, setReport] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,8 @@ const App = () => {
     setReport(null);
 
     try {
-      const data = await generateReport(companyName);
+      // Pass the optional focus area to the service
+      const data = await generateReport(companyName, focusArea);
       setReport(data);
       setStatus(ReportStatus.COMPLETE);
     } catch (err: any) {
@@ -57,28 +59,44 @@ const App = () => {
         {/* Search Section */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-4xl font-extrabold text-primary mb-4 tracking-tight">
-            Corporate Intelligence, <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Simplified.</span>
+            Deep-Dive Corporate<br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Intelligence Reports</span>
           </h2>
           <p className="text-lg text-gray-600 mb-8">
-            Generate comprehensive deep-dive reports with financial analysis, IBC status, and litigation history in seconds.
+            Enter a company name to generate a detailed brief covering MCA data, assets, financial matrices, IBC status, and litigations.
           </p>
           
-          <form onSubmit={handleSearch} className="relative max-w-lg mx-auto">
-            <input
-              type="text"
-              placeholder="Enter Company Name (e.g., Dhrovv India Limited)"
-              className="w-full pl-12 pr-4 py-4 rounded-full border-2 border-gray-200 focus:border-accent focus:ring-4 focus:ring-blue-50 transition-all shadow-sm text-lg outline-none"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              disabled={status === ReportStatus.GENERATING}
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
+          <form onSubmit={handleSearch} className="relative max-w-lg mx-auto space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Company Name (e.g., Dhrovv India Limited)"
+                className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-accent focus:ring-4 focus:ring-blue-50 transition-all shadow-sm text-lg outline-none font-medium"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                disabled={status === ReportStatus.GENERATING}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
+            </div>
+
+            {/* Optional Enhancement Input */}
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="Optional: Enhance specific section (e.g., 'Focus on NCLT orders')"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-accent focus:ring-2 focus:ring-blue-50 transition-all shadow-sm text-sm outline-none"
+                value={focusArea}
+                onChange={(e) => setFocusArea(e.target.value)}
+                disabled={status === ReportStatus.GENERATING}
+              />
+              <Settings2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent transition-colors" size={16} />
+            </div>
+
             <button
               type="submit"
               disabled={!companyName.trim() || status === ReportStatus.GENERATING}
-              className="absolute right-2 top-2 bottom-2 bg-primary hover:bg-slate-800 text-white px-6 rounded-full font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="w-full bg-primary hover:bg-slate-800 text-white py-3.5 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10"
             >
-              {status === ReportStatus.GENERATING ? <Loader2 className="animate-spin" size={20} /> : 'Analyze'}
+              {status === ReportStatus.GENERATING ? <Loader2 className="animate-spin" size={20} /> : 'Generate Deep-Dive Report'}
             </button>
           </form>
         </div>
@@ -105,23 +123,23 @@ const App = () => {
                 <div className="h-4 bg-gray-200 rounded w-4/6"></div>
              </div>
              <div className="text-center text-sm text-gray-500 mt-4">
-                Researching MCA filings, scanning credit reports, and analyzing financial history... <br/>
-                <span className="text-xs opacity-75">(This typically takes 20-30 seconds)</span>
+                Scanning MCA filings, credit ratings, IBBI orders, and generating financial matrices... <br/>
+                <span className="text-xs opacity-75">(This typically takes 30-45 seconds due to deep research)</span>
              </div>
           </div>
         )}
 
         {/* Results View */}
         {status === ReportStatus.COMPLETE && report && (
-          <div className="animate-fade-in-up">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Analysis Report: {report.companyName}</h2>
+          <div className="animate-fade-in-up pb-20">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold text-gray-800">Deep Dive: {report.companyName}</h2>
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm shadow-blue-600/20"
               >
                 <FileDown size={18} />
-                Export to Word
+                Download .DOCX
               </button>
             </div>
 
