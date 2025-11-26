@@ -60,8 +60,8 @@ Your task is to generate a **comprehensive "Deep-Dive Due Diligence Report"** on
 export const generateReport = async (companyName: string, focusArea?: string): Promise<ReportData> => {
   // 1. Get Key
   const apiKey = process.env.API_KEY ? process.env.API_KEY.trim() : "";
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please check vite.config.ts.");
+  if (!apiKey || apiKey === "PASTE_YOUR_NEW_KEY_HERE") {
+    throw new Error("API Key is missing or invalid. Please update vite.config.ts with a valid Google Gemini API Key.");
   }
   
   const ai = new GoogleGenAI({ apiKey: apiKey });
@@ -123,29 +123,43 @@ export const generateReport = async (companyName: string, focusArea?: string): P
     );
 
   } catch (error: any) {
-    console.warn("Attempt 1 failed with Search Tool. Retrying without search...", error);
+    console.warn("Attempt 1 failed. Error details:", error);
+
+    // CRITICAL ERROR HANDLING
+    const errorMsg = error.toString().toLowerCase();
+    if (errorMsg.includes("leaked") || errorMsg.includes("key")) {
+      throw new Error("CRITICAL: Your API Key was blocked by Google because it was posted publicly. Please generate a NEW key at aistudio.google.com and update vite.config.ts.");
+    }
+
+    // ATTEMPT 2: Fallback without Search Tools
+    // Note: We only fallback if it's NOT an auth error. Auth errors (leaked key) will fail here too.
+    console.log("Retrying without Search Tool...");
     
-    // ATTEMPT 2: Fallback without Search Tools (Standard Model)
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt + "\n\n(Note: Real-time search is currently unavailable. Please rely on your internal knowledge base.)",
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
-          // Removed tools specifically to bypass permission errors
+          // Removed tools to bypass potential search-specific permission issues
           temperature: 0.3,
         },
       });
       
       const result = processResponse(response.text || "", []);
-      // Append a small note to the markdown so user knows
       result.rawMarkdown += "\n\n> *Note: This report was generated using the model's internal knowledge base as live search was unavailable.*";
       return result;
 
     } catch (retryError: any) {
       console.error("Gemini API Fatal Error:", retryError);
-      const msg = retryError instanceof Error ? retryError.message : String(retryError);
-      throw new Error(`Generation Failed: ${msg}`);
+      let msg = retryError instanceof Error ? retryError.message : String(retryError);
+      
+      // Improve user-facing message for auth errors
+      if (msg.includes("403") || msg.includes("key")) {
+        msg = "Your API Key is invalid or has been blocked. Please check vite.config.ts.";
+      }
+      
+      throw new Error(msg);
     }
   }
 };
