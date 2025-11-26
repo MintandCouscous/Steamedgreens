@@ -1,8 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { ReportData, FinancialYearData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const SYSTEM_INSTRUCTION = `
 You are a world-class Senior Financial Analyst, Forensic Auditor, and Insolvency Professional.
 Your task is to generate a **comprehensive "Deep-Dive Due Diligence Report"** on a specific Indian company.
@@ -60,6 +58,14 @@ Your task is to generate a **comprehensive "Deep-Dive Due Diligence Report"** on
 `;
 
 export const generateReport = async (companyName: string, focusArea?: string): Promise<ReportData> => {
+  // Lazy initialization to prevent crash on app load
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please configure the API_KEY environment variable in Vercel.");
+  }
+  
+  const ai = new GoogleGenAI({ apiKey: apiKey });
+
   try {
     let prompt = `Give me a detailed brief on "${companyName}". Structure it strictly according to the sections defined in your system instructions. Use MCA filings, credit rating reports, IBBI/NCLT orders, and IPA disclosures.`;
     
