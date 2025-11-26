@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, Header, Footer } from "docx";
 import { saveAs } from "file-saver";
 import { ReportData } from "../types";
 
@@ -9,31 +9,7 @@ export const downloadWordDocument = async (report: ReportData) => {
   const lines = report.rawMarkdown.split("\n");
   const docChildren: any[] = [];
 
-  // Title
-  docChildren.push(
-    new Paragraph({
-      text: `Due Diligence Report: ${report.companyName}`,
-      heading: HeadingLevel.TITLE,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 300 },
-    })
-  );
-
-  docChildren.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-            text: `Generated on: ${new Date().toLocaleDateString()}`,
-            italics: true,
-            color: "666666"
-        })
-      ],
-      spacing: { after: 400 },
-    })
-  );
-
   // Parse Markdown-ish content line by line
-  // This is a basic parser. For a production app, use a dedicated AST parser.
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
@@ -44,17 +20,18 @@ export const downloadWordDocument = async (report: ReportData) => {
             new Paragraph({
                 text: cleanText(line.replace("### ", "")),
                 heading: HeadingLevel.HEADING_3,
-                spacing: { before: 200, after: 100 },
+                spacing: { before: 240, after: 120 },
             })
         );
     } else if (line.startsWith("## ")) {
         docChildren.push(
             new Paragraph({
-                text: cleanText(line.replace("## ", "")),
+                text: cleanText(line.replace("## ", "")).toUpperCase(),
                 heading: HeadingLevel.HEADING_2,
-                spacing: { before: 300, after: 150 },
+                spacing: { before: 400, after: 200 },
                 border: {
-                    bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 }
+                    // Fix: Changed 'value' to 'style' as per docx IBorderOptions interface
+                    bottom: { color: "333333", space: 4, style: BorderStyle.SINGLE, size: 12 }
                 }
             })
         );
@@ -63,7 +40,8 @@ export const downloadWordDocument = async (report: ReportData) => {
             new Paragraph({
                 text: cleanText(line.replace("# ", "")),
                 heading: HeadingLevel.HEADING_1,
-                spacing: { before: 400, after: 200 },
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 400, after: 400 },
             })
         );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
@@ -71,38 +49,41 @@ export const downloadWordDocument = async (report: ReportData) => {
             new Paragraph({
                 text: cleanText(line.replace(/^[-*]\s+/, "")),
                 bullet: { level: 0 },
+                spacing: { after: 100 },
             })
         );
     } else if (line.startsWith("|")) {
-        // Simple table detection - Just render as text for safety in this simple parser
-        // or attempt to parse if feeling adventurous. 
-        // For robustness in this demo, we render table rows as monospaced text
+        // Render as Monospace text block to preserve table look in Word without complex parsing
+        // (Complex table parsing from markdown to docx is error prone without a heavy library)
         docChildren.push(
             new Paragraph({
                 children: [
                     new TextRun({
                         text: line,
                         font: "Courier New",
-                        size: 20
+                        size: 18 // 9pt
                     })
-                ]
+                ],
+                spacing: { after: 0, before: 0 }
             })
         )
     } else {
         // Regular paragraph
-        // Handle bolding **text**
         const parts = line.split("**");
         const children = parts.map((part, index) => {
             return new TextRun({
                 text: part,
                 bold: index % 2 === 1, // Every odd index was inside ** **
+                font: "Calibri",
+                size: 22 // 11pt
             });
         });
 
         docChildren.push(
             new Paragraph({
                 children: children,
-                spacing: { after: 120 },
+                alignment: AlignmentType.JUSTIFIED,
+                spacing: { after: 160 },
             })
         );
     }
@@ -112,7 +93,7 @@ export const downloadWordDocument = async (report: ReportData) => {
   if (report.sources.length > 0) {
     docChildren.push(
         new Paragraph({
-            text: "Sources & References",
+            text: "Primary Sources",
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         })
@@ -129,8 +110,41 @@ export const downloadWordDocument = async (report: ReportData) => {
   }
 
   const doc = new Document({
+    styles: {
+        paragraphStyles: [
+            {
+                id: "Normal",
+                name: "Normal",
+                run: { font: "Calibri" }
+            }
+        ]
+    },
     sections: [
       {
+        headers: {
+            default: new Header({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "CONFIDENTIAL INFORMATION MEMORANDUM", bold: true, size: 16, color: "666666" })
+                        ],
+                        alignment: AlignmentType.RIGHT
+                    })
+                ]
+            })
+        },
+        footers: {
+            default: new Footer({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: `Strictly Private & Confidential - ${report.companyName}`, size: 16, color: "999999" })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    })
+                ]
+            })
+        },
         properties: {},
         children: docChildren,
       },
@@ -138,5 +152,5 @@ export const downloadWordDocument = async (report: ReportData) => {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${report.companyName.replace(/\s+/g, "_")}_DeepDive_Report.docx`);
+  saveAs(blob, `${report.companyName.replace(/\s+/g, "_")}_IM_Report.docx`);
 };

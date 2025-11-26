@@ -2,64 +2,72 @@ import { GoogleGenAI } from "@google/genai";
 import { ReportData, FinancialYearData } from "../types";
 
 const SYSTEM_INSTRUCTION = `
-You are a world-class Senior Financial Analyst, Forensic Auditor, and Insolvency Professional.
-Your task is to generate a **comprehensive "Deep-Dive Due Diligence Report"** on a specific Indian company.
+You are an **Executive Director at a top-tier Investment Bank (e.g., Goldman Sachs, JP Morgan)** specializing in Distressed Assets and Special Situations in India.
+Your task is to generate a **Confidential Information Memorandum (IM) Grade Report** on a specific Indian company.
 
 **Core Directives:**
-1. **Sources:** You MUST use the \`googleSearch\` tool to find real-time data from **MCA filings, credit rating reports (CRISIL, ICRA, CARE, India Ratings), IBBI/NCLT orders, IPA disclosures, and reliable news outlets**.
-2. **Accuracy:** Cite sources explicitly. If specific data (like a specific debt figure) is unavailable, state "Data not publicly available" rather than estimating.
-3. **Format:** Use clean **Markdown**. Use Markdown Tables for all financial data, lists of lenders, and litigation timelines.
+1. **Tone:** Highly professional, objective, concise, and financial-heavy. Avoid generic fluff.
+2. **Sources:** Prioritize **IBBI List of Creditors, NCLT Orders, Credit Rating Rationales (CRISIL/ICRA), and Annual Reports**.
+3. **Accuracy:** If data (like specific claims) is unavailable, explicitly state "Data not in public domain" instead of hallucinating.
 
 **Report Structure (Strictly Follow This):**
 
-1. **About the Company**
-   - Incorporation details (CIN, RoC, Incorporation Date).
-   - Shareholding / equity partners (% stakes).
-   - Brief background & promoter history.
+1. **Executive Summary**
+   - **The Opportunity:** One-paragraph deal teaser.
+   - **Key Distresses:** Why is the company in trouble? (Macro/Micro factors).
+   - **Current Status:** Running concern? Liquidation? Resolution Plan approved?
 
-2. **Overview of the Asset(s)**
-   - Location, size/capacity, sector-specific specs (MW for power, beds for hospitals, TPA for steel, sq. ft. for real estate, etc.).
-   - EPC/commissioning, PPAs/offtake agreements, licenses/approvals.
-   - Current operational status (running/idle/mothballed).
+2. **Corporate Profile & Shareholding**
+   - **Entity Details:** CIN, Incorporation Date, Registered Office.
+   - **Capital Structure Table:** Authorized Share Capital, Paid-up Capital.
+   - **Shareholding Pattern:** Promoters vs. Public vs. Institutional holding (% breakdown).
 
-3. **Operational & Financial Performance (Last 5 Years)**
-   - **REQUIRED TABLE:** Columns -> Year (Recent to Old), Revenue, EBITDA, EBITDA %, PAT, Debt, Equity.
-   - Commentary: Explain *why* performance collapsed or grew (sector economics, regulatory issues, debt overhang).
+3. **Business & Asset Overview**
+   - **Core Operations:** Manufacturing capacity, location specific specs (e.g., "1.2 MTPA Integrated Steel Plant in Odisha").
+   - **Land & Facilities:** Freehold vs. Leasehold status (critical for valuation).
+   - **Key Licenses:** Environmental clearances, mining leases, PPAs.
 
-4. **Capital Structure & Lenders**
-   - **REQUIRED TABLE (MCA Charge Data):** Lender | Amount | Date | Security/Charge Type.
-   - Estimate Total Debt Outstanding.
+4. **Insolvency & Bankruptcy (IBC) Status & Claims Analysis**
+   - **Timeline Table:** Admission Date | RP Name | CoC Constitution | Resolution Status.
+   - **CLAIMS ANALYSIS TABLE (Critical):**
+     | Creditor Class | Amount Claimed (INR Cr) | Amount Admitted (INR Cr) | % Vote Share in CoC |
+     | :--- | :--- | :--- | :--- |
+     | Financial Creditors (FC) | ... | ... | ... |
+     | Operational Creditors (OC) | ... | ... | ... |
+     | Workmen/Employees | ... | ... | ... |
+     | **Total** | **...** | **...** | **100%** |
+   - *Search specifically for "List of Creditors [Company Name]" on IBBI or the company website.*
 
-5. **CIRP / IBC Timeline (If Applicable)**
-   - **REQUIRED TABLE:** Date | Forum/Ref | Event (Admission, RP appointment, Form-G, CoC constitution, extensions, liquidation order).
-   - Clarify if liquidation application has been filed (Check NCLT/IBBI).
+5. **Financial Performance (5-Year Historical)**
+   - **REQUIRED TABLE:** Columns -> Year (Recent -> Old), Revenue, EBITDA, EBITDA Margin (%), PAT, Net Worth, Total Debt.
+   - **Ratio Analysis:** Comment on DSCR, Net Leverage, and Interest Coverage if data permits.
+   - **Auditor Comments:** Mention any "Going Concern" qualifications from recent audit reports.
 
-6. **Other Litigations (Non-IBC)**
-   - Investor-state, High Court, Supreme Court, sector regulators (e.g., TRAI, CERC), NGT, etc.
-   - **REQUIRED TABLE:** Respondent | Year filed | Last order/status | Description.
+6. **Debt Profile & Lender Consortium**
+   - **Charge Data Table:** Lender Name | Amount Secured | Charge ID | Asset Charged.
+   - **Consortium Leader:** Identify the lead bank if possible.
 
-7. **IPA / RP Disclosures**
-   - Identify RP (Name, IBBI Reg No., IPA).
-   - Check IIIPI / ICSI-IIP / ICMAI-IPA portals for relationship disclosures.
-   - **REQUIRED TABLE:** Corporate Debtor | Disclosure type | Date/time.
-   - *Draft Text:* If disclosures are missing/delayed, provide draft text to query the RP/IPA.
+7. **Legal & Regulatory Contingencies**
+   - **Key Litigations:** Non-IBC cases (e.g., ED/CBI investigations, NGT bans, arbitration awards).
+   - **Regulatory Risk:** Policy changes affecting the sector.
 
-8. **One-page Takeaway**
-   - Crisp bullets: what the company is, what went wrong, financial/operational health, CIRP progress, litigations, and risks.
-
-**Optional Enhancements (Auto-include if relevant):**
-- "Why stranded" explainer (fuel economics, regulation, market shift).
+8. **SWOT Analysis**
+   - **Strengths:** (e.g., Strategic location, backward integration).
+   - **Weaknesses:** (e.g., High cost of debt, legacy technology).
+   - **Opportunities:** (e.g., Sector turnaround, PLI schemes).
+   - **Threats:** (e.g., Liquidation value erosion).
 
 **CRITICAL OUTPUT FORMAT:**
 1. Return the report in **Markdown**.
-2. **AT THE VERY END**, strictly append a JSON block wrapped in \`\`\`json\`\`\` containing the financial data for charting.
+2. Use **Markdown Tables** for all data sets.
+3. **AT THE VERY END**, strictly append a JSON block wrapped in \`\`\`json\`\`\` containing the financial data for charting.
    - Format: \`[{ "year": "FY24", "revenue": 100, "ebitda": 20, "ebitdaMargin": 20, "pat": 5, "debt": 50, "equity": 30 }, ...]\` (Values in INR Cr).
-   - If exact numbers aren't found, leave the array empty \`[]\`.
 `;
 
 export const generateReport = async (companyName: string, focusArea?: string): Promise<ReportData> => {
   // 1. Get Key
   const apiKey = process.env.API_KEY ? process.env.API_KEY.trim() : "";
+  // Check for the placeholder or empty string
   if (!apiKey || apiKey === "PASTE_YOUR_NEW_KEY_HERE") {
     throw new Error("API Key is missing or invalid. Please update vite.config.ts with a valid Google Gemini API Key.");
   }
@@ -67,9 +75,10 @@ export const generateReport = async (companyName: string, focusArea?: string): P
   const ai = new GoogleGenAI({ apiKey: apiKey });
 
   // 2. Build Prompt
-  let prompt = `Give me a detailed brief on "${companyName}". Structure it strictly according to the sections defined in your system instructions. Use MCA filings, credit rating reports, IBBI/NCLT orders, and IPA disclosures.`;
+  let prompt = `Generate an Investment Banking Grade Confidential Information Memorandum (IM) draft for "${companyName}". Strictly follow the "Executive Director" persona and structure defined in the system instructions. Focus heavily on the "Claims Analysis" and "Financial Performance" sections.`;
+  
   if (focusArea && focusArea.trim()) {
-    prompt += `\n\n**ENHANCEMENT INSTRUCTION:** Please provide extra detail and focus specifically on: "${focusArea}". Enhance this section with deep analysis.`;
+    prompt += `\n\n**CLIENT SPECIFIC REQUEST:** The client is particularly interested in: "${focusArea}". Provide granular detail and forensic analysis on this specific aspect.`;
   }
 
   // 3. Define Helper for Response Processing
@@ -113,7 +122,7 @@ export const generateReport = async (companyName: string, focusArea?: string): P
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
-        temperature: 0.3,
+        temperature: 0.2, // Lower temperature for more factual/professional output
       },
     });
 
@@ -132,29 +141,27 @@ export const generateReport = async (companyName: string, focusArea?: string): P
     }
 
     // ATTEMPT 2: Fallback without Search Tools
-    // Note: We only fallback if it's NOT an auth error. Auth errors (leaked key) will fail here too.
     console.log("Retrying without Search Tool...");
     
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt + "\n\n(Note: Real-time search is currently unavailable. Please rely on your internal knowledge base.)",
+        contents: prompt + "\n\n(Note: Real-time search is currently unavailable. Use your internal training data to estimate financials and clearly state 'Estimates' where actuals are missing.)",
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           // Removed tools to bypass potential search-specific permission issues
-          temperature: 0.3,
+          temperature: 0.2,
         },
       });
       
       const result = processResponse(response.text || "", []);
-      result.rawMarkdown += "\n\n> *Note: This report was generated using the model's internal knowledge base as live search was unavailable.*";
+      result.rawMarkdown += "\n\n---\n**Disclaimer:** *This report was generated using internal knowledge bases as live search was unavailable. Specific claim amounts and recent court dates may need manual verification.*";
       return result;
 
     } catch (retryError: any) {
       console.error("Gemini API Fatal Error:", retryError);
       let msg = retryError instanceof Error ? retryError.message : String(retryError);
       
-      // Improve user-facing message for auth errors
       if (msg.includes("403") || msg.includes("key")) {
         msg = "Your API Key is invalid or has been blocked. Please check vite.config.ts.";
       }
