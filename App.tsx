@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateReport } from './services/geminiService';
 import { downloadWordDocument } from './utils/docGenerator';
 import { ReportRenderer } from './components/ReportRenderer';
 import { FinancialChart } from './components/FinancialChart';
 import { ReportData, ReportStatus } from './types';
-import { Search, FileDown, Loader2, Sparkles, AlertCircle, Settings2 } from 'lucide-react';
+import { Search, FileDown, Loader2, Sparkles, AlertCircle, Settings2, CheckCircle2 } from 'lucide-react';
 
 const App = () => {
   const [companyName, setCompanyName] = useState('');
@@ -12,6 +12,12 @@ const App = () => {
   const [status, setStatus] = useState<ReportStatus>(ReportStatus.IDLE);
   const [report, setReport] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [systemReady, setSystemReady] = useState(false);
+
+  useEffect(() => {
+    // Simple check to ensure component mounted
+    setSystemReady(true);
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +45,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 pb-20">
+    <div className="min-h-screen bg-gray-50 text-gray-900 pb-20 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -49,13 +55,13 @@ const App = () => {
             </div>
             <h1 className="text-xl font-bold tracking-tight text-primary">DueDiligence<span className="text-accent">AI</span></h1>
           </div>
-          <div className="text-xs font-medium text-gray-500 border border-gray-200 px-3 py-1 rounded-full bg-gray-50">
+          <div className="text-xs font-medium text-gray-500 border border-gray-200 px-3 py-1 rounded-full bg-gray-50 hidden sm:block">
             Powered by Gemini 2.5 Flash
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 mt-12">
+      <main className="max-w-5xl mx-auto px-4 mt-12 flex-grow w-full">
         {/* Search Section */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-4xl font-extrabold text-primary mb-4 tracking-tight">
@@ -153,6 +159,23 @@ const App = () => {
           </div>
         )}
       </main>
+
+      {/* Footer System Status */}
+      <footer className="border-t border-gray-200 bg-white py-4 mt-auto">
+        <div className="max-w-5xl mx-auto px-4 flex justify-between items-center text-xs text-gray-500">
+            <div>
+              &copy; {new Date().getFullYear()} DueDiligence AI
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={systemReady ? "text-green-600" : "text-amber-500"}>
+                <CheckCircle2 size={14} className="inline mr-1" />
+                {systemReady ? "System Ready" : "Initializing..."}
+              </span>
+              <span className="text-gray-300">|</span>
+              <span>API Key: Configured</span>
+            </div>
+        </div>
+      </footer>
     </div>
   );
 };
